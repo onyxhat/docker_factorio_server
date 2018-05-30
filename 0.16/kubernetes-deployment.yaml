@@ -1,0 +1,64 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: factorio-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: factorio
+spec:
+  type: NodePort
+  ports:
+    - port: 27015
+      targetPort: steam
+      name: steam
+    - port: 34197
+      targetPort: game
+      name: game
+      protocol: UDP
+  selector:
+    name: factorio
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: factorio
+  labels:
+    name: factorio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: factorio
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: factorio
+    spec:
+      containers:
+      - image: dtandersen/factorio:0.16.46
+        name: factorio
+        ports:
+        - containerPort: 27015
+          name: steam
+        - containerPort: 34197
+          name: game
+          protocol: UDP
+        volumeMounts:
+        - name: data
+          mountPath: /factorio
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: factorio-pv
+      restartPolicy: Always
